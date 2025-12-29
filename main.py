@@ -66,7 +66,7 @@ def send_to_discord_webhook(webhook_url, username, public_ip, local_ip=None):
 
 if __name__ == "__main__":
     # --- KONFIGURASI PENTING ---
-    DISCORD_WEBHOOK_URL = "GANTI_DENGAN_URL_WEBHOOK_DISCORD_ANDA" # <-- Ganti ini!
+    DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1413324736213159966/-Z-Ac9Pk-YUlBWD98eLZCUUxgBD3EflFYFgn537L98R68GTI3JYrtC_XC2EqmZ42Ma47" # <-- Ganti ini!
     BOT_USERNAME = "CyberGuard IP Logger" # Nama yang akan muncul di Discord
 
     print("Mencoba mengambil alamat IP...")
