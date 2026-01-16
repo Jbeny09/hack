@@ -5,7 +5,9 @@ import os
 from datetime import datetime
 
 LOG_PATH = os.path.join("..", "log", "ip_logs.json")
-WEBHOOK_URL = "{Your Discord URL}"
+#Bagian Dicord Webhook URL Disini------------
+WEBHOOK_URL = "{DISCORD WEBHOOK URL}"
+#Bagian Inti Disini--------------------------
 
 def load_log():
     if os.path.exists(LOG_PATH):
