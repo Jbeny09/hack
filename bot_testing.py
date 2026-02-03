@@ -4,7 +4,7 @@ NO cv2, NO pyautogui, NO DISPLAY needed!
 GPS + Shell + Persistence + File Upload
 100% compatible Codespace/Cloud/Headless
 """
-
+import threading
 import requests
 import psutil
 import platform
