@@ -16,7 +16,7 @@ import io
 import base64
 
 # ═══════════════════════════════════════════════════════════════
-WEBHOOK_URL = "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+WEBHOOK_URL = "https://discord.com/api/webhooks/1413324736213159966/-Z-Ac9Pk-YUlBWD98eLZCUUxgBD3EflFYFgn537L98R68GTI3JYrtC_XC2EqmZ42Ma47"
 POLL_INTERVAL = 30
 
 webhook = WEBHOOK_URL
